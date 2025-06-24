@@ -1,6 +1,7 @@
 set -x
 
-python3 -m verl.trainer.main_ppo \
+# python3 -m verl.trainer.main_ppo \
+python3 -m recipe.genrm.genrm_main_ppo \
     algorithm.adv_estimator=grpo \
     data.train_files=/mnt/hdfs/resources/datasets/GSM8K-Processed/train.parquet \
     data.val_files=/mnt/hdfs/resources/datasets/GSM8K-Processed/test.parquet \
@@ -23,11 +24,12 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
     actor_rollout_ref.rollout.n=8 \
     algorithm.use_kl_in_reward=False \
+    reward_model.enable=True \
     trainer.critic_warmup=0 \
     trainer.logger=['console','wandb'] \
     trainer.project_name='verl-debug' \
     trainer.experiment_name='qwen2_5_3b_function_rm' \
-    trainer.n_gpus_per_node=8 \
+    trainer.n_gpus_per_node=4 \
     trainer.val_before_train=True \
     trainer.nnodes=1 \
     trainer.save_freq=20 \

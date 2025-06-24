@@ -22,8 +22,9 @@ import hydra
 import ray
 from omegaconf import OmegaConf
 
-from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 from verl.trainer.ppo.reward import load_reward_manager
+
+from .genrm_ray_trainer import RayPPOTrainer
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
@@ -116,7 +117,7 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from verl.trainer.ppo.ray_trainer import ResourcePoolManager, Role
+        from .genrm_ray_trainer import ResourcePoolManager, Role
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
@@ -142,13 +143,7 @@ class TaskRunner:
         # finally, we combine all the rewards together
         # The reward type depends on the tag of the data
         if config.reward_model.enable:
-            # if config.reward_model.strategy in ["fsdp", "fsdp2"]:
-            #     from verl.workers.fsdp_workers import RewardModelWorker
-            # elif config.reward_model.strategy == "megatron":
-            #     from verl.workers.megatron_workers import RewardModelWorker
-            # else:
-            #     raise NotImplementedError
-            from .fsdp_workers import GenerativeRewardModelWorker
+            from .genrm_fsdp_workers import GenerativeRewardModelWorker
 
             role_worker_mapping[Role.RewardModel] = ray.remote(GenerativeRewardModelWorker)
             mapping[Role.RewardModel] = global_pool_id

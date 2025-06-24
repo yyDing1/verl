@@ -727,90 +727,98 @@ reward_model:
   # If False, the following parameters are not effective
   enable: False
 
-  # FSDP strategy: "fsdp" or "fsdp2"
-  strategy: ${actor_rollout_ref.actor.strategy}
-
   # model config for reward scoring
   model:
-
-    # Input tokenizer. If the reward model’s chat template is inconsistent with the policy,
-    # we need to first decode to plaintext, then apply the rm’s chat_template.
-    # Then score with RM. If chat_templates are consistent, it can be set to null.
-    # input_tokenizer: ${actor_rollout_ref.model.path}
 
     # RM’s HDFS path or local path. Note that RM only supports AutoModelForSequenceClassification.
     # Other model types need to define their own RewardModelWorker and pass it from the code.
     path: dyyyyyyyy/Qwen2.5-1.5B-GenRM-QueryOnly
 
-    # Custom chat template for the model.
-    custom_chat_template: null
-
     # Whether to use shared memory for loading the model
     use_shm: False
-
-    # Hugging Face config override
-    override_config: {}
 
     # External model implementation (optional)
     external_lib: ${actor_rollout_ref.model.external_lib}
 
     # Use remove padding optimization (saves compute)
-    use_remove_padding: False
+    # use_remove_padding: False
 
-    # Whether to use Liger for linear layer fusion
-    use_liger: false
-
-    # Whether to use custom fused kernels (e.g., FlashAttention, fused MLP)
-    use_fused_kernels: false
-
-    # Options for fused kernels. If use_fused_kernels is true, this will be used.
-    fused_kernel_options:
-
-      # Implementation backend for fused kernels. Options: "triton" or "torch".
-      impl_backend: torch
+    # Whether to use fused reward kernels for speedup
+    # use_fused_kernels: ${actor_rollout_ref.model.use_fused_kernels}
 
     # Whether to enable loading a remote code model, default to False
-    trust_remote_code: False
+    # trust_remote_code: False
 
-    # FSDP-specific config
-    fsdp_config:
+  vllm_infer:
 
-      # Policy for wrapping layers with FSDP
-      wrap_policy:
+    # Sampling temperature for rollout.
+    temperature: 1.0
 
-        # Minimum number of parameters to trigger wrapping
-        min_num_params: 0
+    # Top-k sampling parameter. -1 for vLLM rollout, 0 for HF rollout.
+    top_k: -1
 
-      # Whether to offload model parameters to CPU
-      param_offload: False
+    # Top-p sampling parameter. Default 1.0.
+    top_p: 1
 
-      # Only for FSDP2: Reshard after forward pass to reduce memory footprint
-      reshard_after_forward: True
+    # typically the same as data max prompt length
+    # prompt_length: 2048
 
-      # Number of GPUs in each FSDP shard group; -1 means auto
-      fsdp_size: -1
+    # typically the same as data max response length
+    response_length: 2048
 
-      # Only for FSDP1: FSDP1 configuration, prefetch the next forward-pass all-gather
-      # before the current forward computation.
-      forward_prefetch: False
+    # for vllm rollout
+    # Rollout model parameters type. Align with actor model's FSDP/Megatron type.
+    dtype: bfloat16
 
-  # [Deprecated] Global micro batch size
-  micro_batch_size: null
+    # Fraction of GPU memory used by vLLM/SGLang for KV cache.
+    gpu_memory_utilization: 0.5
 
-  # Local per-GPU micro batch size
-  micro_batch_size_per_gpu: null
+    # Whether to ignore EOS and continue generating after EOS is hit.
+    ignore_eos: False
 
-  # Maximum sequence length to process for scoring
-  max_length: null
+    # Whether to disable CUDA graph. Default True to allow cache freeing.
+    enforce_eager: True
 
-  # Sequence parallelism size for Ulysses-style model parallelism
-  ulysses_sequence_parallel_size: 1
+    # Whether to free engine KVCache after generation. Set enforce_eager=True when enabled.
+    free_cache_engine: True
 
-  # Whether to dynamically adjust batch size at runtime
-  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+    # Which loader to use for rollout model weights: dummy_dtensor, hf, megatron, etc.
+    # safetensors (for huge model, and set use_shm=True); dummy_dtensor: randomly init model weight
+    # load_format: dummy_dtensor
 
-  # Maximum number of tokens per GPU in one forward pass
-  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+    # TP size for rollout. Only effective for vLLM.
+    tensor_model_parallel_size: 2
+
+    # max number of tokens in a batch
+    max_num_batched_tokens: 8192
+
+    # max length for rollout
+    # max_model_len: null
+
+    # [Will be deprecated, use log_prob_micro_batch_size_per_gpu] The batch size for one forward pass in the computation of log_prob. Global batch size.
+    # log_prob_micro_batch_size: null
+
+    # The batch size for one forward pass in the computation of log_prob. Local batch size per GPU.
+    # log_prob_micro_batch_size_per_gpu: null
+
+    # enable dynamic batch size (sequence packing) for log_prob computation
+    # log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+
+    # max token length for log_prob computation
+    # log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+
+    # disable logging statistics
+    disable_log_stats: True
+
+    # may get higher throughput when set to True. When activated, Please increase max_num_batched_tokens or decrease max_model_len.
+    enable_chunked_prefill: True
+
+    # for hf rollout
+    # Whether to sample during training rollout. False uses greedy sampling.
+    do_sample: True
+
+    # number of responses (i.e. num sample times). > 1 for grpo
+    n: 1
 
   # Reward Manager. This defines the mechanism of computing rule-based reward and handling different reward sources.
   # Default is naive. If all verification functions are multiprocessing-safe,
