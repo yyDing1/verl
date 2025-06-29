@@ -3,8 +3,8 @@ set -x
 # python3 -m verl.trainer.main_ppo \
 python3 -m recipe.genrm_worker.genrm_main_ppo \
     algorithm.adv_estimator=grpo \
-    data.train_files=/mnt/hdfs/resources/datasets/GSM8K-Processed/train.parquet \
-    data.val_files=/mnt/hdfs/resources/datasets/GSM8K-Processed/test.parquet \
+    data.train_files=${HOME}/data/gsm8k/train.parquet \
+    data.val_files=${HOME}/data/gsm8k/test.parquet \
     data.train_batch_size=256 \
     data.max_prompt_length=1024 \
     data.max_response_length=2048 \
@@ -20,7 +20,7 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.actor.entropy_coeff=0 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
-    actor_rollout_ref.rollout.name=vllm \
+    actor_rollout_ref.rollout.name=sglang \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
     actor_rollout_ref.rollout.n=4 \
     algorithm.use_kl_in_reward=False \
@@ -32,6 +32,7 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     reward_model.vllm_infer.response_length=4096 \
     reward_model.vllm_infer.gpu_memory_utilization=0.8 \
     reward_model.vllm_infer.tensor_model_parallel_size=1 \
+    reward_model.vllm_infer.n=1 \
     trainer.critic_warmup=0 \
     trainer.logger=['console','wandb'] \
     trainer.project_name='verl-debug' \
