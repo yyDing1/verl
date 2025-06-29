@@ -38,7 +38,7 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     trainer.project_name='verl-debug' \
     trainer.experiment_name='qwen2_5_3b_function_rm' \
     trainer.n_gpus_per_node=8 \
-    trainer.val_before_train=True \
+    trainer.val_before_train=False \
     trainer.nnodes=1 \
     trainer.save_freq=20 \
     trainer.test_freq=5 \
