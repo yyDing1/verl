@@ -23,13 +23,12 @@ import torch.distributed
 from torch.distributed.device_mesh import init_device_mesh
 
 from verl import DataProto
-from verl.third_party.vllm import customized_vllm
 from verl.single_controller.base import Worker
 from verl.single_controller.base.decorator import Dispatch, register
-from verl.utils import hf_processor, hf_tokenizer, omega_conf_to_dataclass
+from verl.utils import hf_tokenizer, omega_conf_to_dataclass
 from verl.utils.debug import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage, simple_timer
 from verl.utils.debug.performance import reduce_timing
-from verl.utils.device import get_device_id, get_device_name, get_nccl_backend, get_torch_device, is_cuda_available, is_npu_available
+from verl.utils.device import get_device_id, get_device_name, get_nccl_backend, get_torch_device
 from verl.utils.fs import copy_to_local
 from verl.utils.import_utils import import_external_libs
 
@@ -117,7 +116,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
             max_prompt_length = self.config.vllm_infer.prompt_length
             raw_prompt_ids = self.tokenizer.encode(prompt_with_chat_template, add_special_tokens=False)
             if len(raw_prompt_ids) > max_prompt_length:
-                raw_prompt_ids = raw_prompt_ids[: max_prompt_length]  # Force to truncate Right
+                raw_prompt_ids = raw_prompt_ids[:max_prompt_length]  # Force to truncate Right
             genrm_raw_prompt_ids.append(raw_prompt_ids)
 
         return DataProto.from_dict(non_tensors={"raw_prompt_ids": genrm_raw_prompt_ids})

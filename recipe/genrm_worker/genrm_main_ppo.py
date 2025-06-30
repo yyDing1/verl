@@ -156,6 +156,7 @@ class TaskRunner:
         # Load the reward manager for training and validation.
         if config.reward_model.enable:
             from .genrm_reward_manager import GenerativeRewardManager
+
             reward_fn = GenerativeRewardManager(tokenizer, num_examine=0)
         else:
             reward_fn = load_reward_manager(config, tokenizer, num_examine=0, **config.reward_model.get("reward_kwargs", {}))

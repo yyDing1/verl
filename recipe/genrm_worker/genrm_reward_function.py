@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from verl.utils.reward_score import default_compute_score
 from verl.utils.reward_score.math import last_boxed_only_string, remove_boxed
-import numpy as np
 
 
 def compute_score_for_each_critics(genrm_critic):

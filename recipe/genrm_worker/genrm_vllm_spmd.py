@@ -5,12 +5,10 @@ import numpy as np
 import torch
 import torch.distributed
 from omegaconf import DictConfig
-from tensordict import TensorDict
 from vllm import LLM, SamplingParams
 
 from verl import DataProto
 from verl.utils.debug import GPUMemoryLogger
-from verl.utils.torch_functional import get_response_mask, pad_2d_list_to_length
 
 logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))

@@ -35,6 +35,7 @@ from sglang.srt.managers.tokenizer_manager import (
     ResumeMemoryOccupationReqInput,
     UpdateWeightsFromTensorReqInput,
 )
+
 try:
     from sglang.srt.openai_api.protocol import Tool  # SGLang < 0.4.8
 except ImportError:

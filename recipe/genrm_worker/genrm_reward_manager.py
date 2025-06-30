@@ -3,7 +3,6 @@ from collections import defaultdict
 import torch
 
 from verl import DataProto
-from verl.workers.reward_manager import register
 
 from .genrm_reward_function import default_compute_score
 
