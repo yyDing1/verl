@@ -52,6 +52,7 @@ class VLLMShardingManager(BaseShardingManager):
 
     @GPUMemoryLogger(role="genrm vllm sharding_manager", logger=logger)
     def __enter__(self):
+        self.timing = {}
         get_torch_device().empty_cache()
         self.inference_engine.wake_up()
 

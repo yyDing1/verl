@@ -76,7 +76,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
         from .genrm_sharding_manager import VLLMShardingManager
         from .genrm_vllm_spmd import vLLMSyncInfer
 
-        genrm = vLLMSyncInfer(model_path=local_path, config=config.vllm_infer)
+        genrm = vLLMSyncInfer(model_path=local_path, config=config.vllm_infer, tokenizer=self.tokenizer)
 
         log_gpu_memory_usage("After building GenRM", logger=logger)
 
@@ -110,7 +110,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
                 {"role": "user", "content": prompt},
                 {"role": "assistant", "content": response},
             ]
-            prompt_with_chat_template = target_tokenizer.apply_chat_template(chat_messages, add_generation_prompt=False, tokenize=False)
+            prompt_with_chat_template = target_tokenizer.apply_chat_template(chat_messages, add_generation_prompt=True, tokenize=False)
             if self.rank == 0 and i == 0:
                 print(f"Switch template. chat: {prompt_with_chat_template}")
 
@@ -145,7 +145,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
             log_gpu_memory_usage("After GenRM generation", logger=logger)
             output = self.genrm_sharding_manager.postprocess_data(output)
 
-        timing_generate.update(self.rollout_sharding_manager.timing)
+        timing_generate.update(self.genrm_sharding_manager.timing)
         # We calculate the average timing across all ranks
         # to make sure meta_info["timing"] is the same
         timing_generate = reduce_timing(timing_generate)

@@ -12,5 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from verl.utils.reward_score import default_compute_score
+from verl.utils.reward_score.math import last_boxed_only_string, remove_boxed
+import numpy as np
 
-# def gen_reward_function()
+
+def compute_score_for_each_critics(genrm_critic):
+    reward_score = 0.0
+    try:
+        boxed_result = last_boxed_only_string(genrm_critic)
+        if boxed_result is not None:
+            result = remove_boxed(boxed_result)
+            reward_score = float(result == "True")
+    except Exception as e:
+        print(e)
+    return reward_score
+
+
+def default_compute_score(data_source, solution_str, ground_truth, genrm_critics=None, extra_info=None):
+    # if genrm is unavailable, compute rule-based reward
+    if genrm_critics is None:
+        final_score = default_compute_score(data_source, solution_str, ground_truth)
+    else:
+        scores = [compute_score_for_each_critics(critic["response"]) for critic in genrm_critics]
+        final_score = np.mean(scores)
+    return {
+        "score": final_score,
+    }

@@ -1015,9 +1015,10 @@ class RayPPOTrainer:
                     with marked_timer("reward", timing_raw, color="yellow"):
                         # compute reward model score
                         if self.use_rm:
-                            reward_tensor = self.rm_wg.compute_rm_score(batch)
-                            batch = batch.union(reward_tensor)
-                            breakpoint()
+                            genrm_output = self.rm_wg.compute_rm_score(batch)
+                            # batch = batch.union(reward_tensor)
+                            from verl.protocol import union_numpy_dict
+                            batch.non_tensor_batch = union_numpy_dict(batch.non_tensor_batch, genrm_output.non_tensor_batch)
 
                         if self.config.reward_model.launch_reward_fn_async:
                             future_reward = compute_reward_async.remote(batch, self.config, self.tokenizer)

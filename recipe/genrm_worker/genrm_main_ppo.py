@@ -143,7 +143,7 @@ class TaskRunner:
         # finally, we combine all the rewards together
         # The reward type depends on the tag of the data
         if config.reward_model.enable:
-            from .genrm_fsdp_workers import GenerativeRewardModelWorker
+            from .genrm_workers import GenerativeRewardModelWorker
 
             role_worker_mapping[Role.RewardModel] = ray.remote(GenerativeRewardModelWorker)
             mapping[Role.RewardModel] = global_pool_id
@@ -154,7 +154,11 @@ class TaskRunner:
             mapping[Role.RefPolicy] = global_pool_id
 
         # Load the reward manager for training and validation.
-        reward_fn = load_reward_manager(config, tokenizer, num_examine=0, **config.reward_model.get("reward_kwargs", {}))
+        if config.reward_model.enable:
+            from .genrm_reward_manager import GenerativeRewardManager
+            reward_fn = GenerativeRewardManager(tokenizer, num_examine=0)
+        else:
+            reward_fn = load_reward_manager(config, tokenizer, num_examine=0, **config.reward_model.get("reward_kwargs", {}))
         val_reward_fn = load_reward_manager(config, tokenizer, num_examine=1, **config.reward_model.get("reward_kwargs", {}))
         resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 

@@ -750,7 +750,7 @@ reward_model:
 
     # RM’s HDFS path or local path. Note that RM only supports AutoModelForSequenceClassification.
     # Other model types need to define their own RewardModelWorker and pass it from the code.
-    path: dyyyyyyyy/Qwen2.5-1.5B-GenRM-QueryOnly
+    path: dyyyyyyyy/Qwen2.5-1.5B-GenRM-WithTemplate
 
     input_tokenizer: ${actor_rollout_ref.model.path}
 

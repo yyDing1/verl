@@ -10,7 +10,7 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     data.max_response_length=2048 \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
-    actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct \
+    actor_rollout_ref.model.path=Qwen/Qwen2.5-0.5B-Instruct \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \
     actor_rollout_ref.actor.ppo_mini_batch_size=128 \
@@ -25,7 +25,7 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     actor_rollout_ref.rollout.n=4 \
     algorithm.use_kl_in_reward=False \
     reward_model.enable=True \
-    reward_model.model.path=dyyyyyyyy/Qwen2.5-1.5B-GenRM-QueryOnly \
+    reward_model.model.path=dyyyyyyyy/Qwen2.5-1.5B-GenRM-WithTemplate \
     reward_model.vllm_infer.temperature=0.7 \
     reward_model.vllm_infer.top_p=0.95 \
     reward_model.vllm_infer.prompt_length=4096 \
@@ -34,9 +34,9 @@ python3 -m recipe.genrm_worker.genrm_main_ppo \
     reward_model.vllm_infer.tensor_model_parallel_size=1 \
     reward_model.vllm_infer.n=1 \
     trainer.critic_warmup=0 \
-    trainer.logger=['console','wandb'] \
-    trainer.project_name='verl-debug' \
-    trainer.experiment_name='qwen2_5_3b_function_rm' \
+    trainer.logger=['console'] \
+    trainer.project_name='verl-test' \
+    trainer.experiment_name='qwen2.5-0.5b-gen-rm-worker' \
     trainer.n_gpus_per_node=8 \
     trainer.val_before_train=False \
     trainer.nnodes=1 \

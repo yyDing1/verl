@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.distributed
 from omegaconf import DictConfig
+from tensordict import TensorDict
 from vllm import LLM, SamplingParams
 
 from verl import DataProto
@@ -16,7 +17,7 @@ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
 
 class vLLMSyncInfer:
-    def __init__(self, model_path: str, config: DictConfig):
+    def __init__(self, model_path: str, config: DictConfig, tokenizer):
         self.config = config
         self.inference_engine = LLM(
             model=model_path,
@@ -51,6 +52,8 @@ class vLLMSyncInfer:
         print(f"kwargs: {kwargs}")
         self.sampling_params = SamplingParams(**kwargs)
 
+        self.pad_token_id = tokenizer.pad_token_id
+
     @GPUMemoryLogger(role="GenRM infer spmd", logger=logger)
     @torch.no_grad()
     def generate_sequences(self, prompts: DataProto) -> DataProto:
@@ -77,10 +80,18 @@ class vLLMSyncInfer:
             sampling_params=self.sampling_params,
             use_tqdm=False,
         )
-        response = []
+        responses = []
         for output in outputs:
+            response = []
             for sample_id in range(len(output.outputs)):
                 response_text = output.outputs[sample_id].text
-                response.append(response_text)
-
-        return DataProto(non_tensor_batch={"genrm_response": response})
+                response.append(
+                    {
+                        "sample_id": sample_id,
+                        "response": response_text,
+                    }
+                )
+            responses.append(response)
+        responses = np.array(responses, dtype=object)
+        non_tensor_batch = {"genrm_responses": responses}
+        return DataProto(non_tensor_batch=non_tensor_batch)
