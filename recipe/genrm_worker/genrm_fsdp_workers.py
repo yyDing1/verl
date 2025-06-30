@@ -1,4 +1,4 @@
-# Copyright 2024 Bytedance Ltd. and/or its affiliates
+# Copyright 2025 Bytedance Ltd. and/or its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The main entry point to run the PPO algorithm
+The main entry point to run the GenRM PPO algorithm
 """
 
 import logging
@@ -28,7 +28,8 @@ from verl.single_controller.base import Worker
 from verl.single_controller.base.decorator import Dispatch, register
 from verl.utils import hf_processor, hf_tokenizer, omega_conf_to_dataclass
 from verl.utils.debug import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage, simple_timer
-from verl.utils.device import get_device_id, get_device_name, get_nccl_backend
+from verl.utils.debug.performance import reduce_timing
+from verl.utils.device import get_device_id, get_device_name, get_nccl_backend, get_torch_device, is_cuda_available, is_npu_available
 from verl.utils.fs import copy_to_local
 from verl.utils.import_utils import import_external_libs
 
@@ -58,7 +59,6 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
 
     def _build_genrm(self, config):
         from torch.distributed.device_mesh import init_device_mesh
-        from verl.utils.model import get_generation_config
 
         infer_tp = config.vllm_infer.tensor_model_parallel_size
         dp = self.world_size // infer_tp
@@ -72,7 +72,6 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
         input_tokenizer_local_path = copy_to_local(config.model.input_tokenizer, use_shm=use_shm)
         self.input_tokenizer = hf_tokenizer(input_tokenizer_local_path, trust_remote_code=trust_remote_code)
         self.tokenizer = hf_tokenizer(local_path, trust_remote_code=trust_remote_code)
-        self.generation_config = get_generation_config(local_path, trust_remote_code=trust_remote_code)
 
         from .genrm_sharding_manager import VLLMShardingManager
         from .genrm_vllm_spmd import vLLMSyncInfer
@@ -90,17 +89,12 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
         return genrm, genrm_sharding_manager
 
     def _switch_genrm_chat_template(self, data: DataProto):
-        src_max_length = data.batch["attention_mask"].shape[-1]
         src_tokenizer = self.input_tokenizer
         target_tokenizer = self.tokenizer
 
-        for i in range(data.batch.batch_size[0]):
-            # extract question
-            prompt_ids = data.batch["promts"][i]
-            prompt_length = prompt_ids.shape[-1]
-            valid_prompt_length = data.batch["attention_mask"][i][:prompt_length].sum()
-            valid_prompt_ids = prompt_ids[-valid_prompt_length:]
+        genrm_raw_prompt_ids = []
 
+        for i in range(data.batch.batch_size[0]):
             # extract response
             response_ids = data.batch["responses"][i]
             response_length = response_ids.shape[-1]
@@ -108,8 +102,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
             valid_response_ids = response_ids[:valid_response_length]
 
             # decode & remove bos / eos
-            prompt = src_tokenizer.decode(valid_prompt_ids)
-            prompt = prompt.replace(src_tokenizer.bos_token, "")
+            prompt = data.non_tensor_batch["extra_info"][0]["question"]
             response = src_tokenizer.decode(valid_response_ids)
             response = response.replace(src_tokenizer.eos_token, "")
 
@@ -118,7 +111,16 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
                 {"role": "assistant", "content": response},
             ]
             prompt_with_chat_template = target_tokenizer.apply_chat_template(chat_messages, add_generation_prompt=False, tokenize=False)
-            # TODO HERE
+            if self.rank == 0 and i == 0:
+                print(f"Switch template. chat: {prompt_with_chat_template}")
+
+            max_prompt_length = self.config.vllm_infer.prompt_length
+            raw_prompt_ids = self.tokenizer.encode(prompt_with_chat_template, add_special_tokens=False)
+            if len(raw_prompt_ids) > max_prompt_length:
+                raw_prompt_ids = raw_prompt_ids[: max_prompt_length]  # Force to truncate Right
+            genrm_raw_prompt_ids.append(raw_prompt_ids)
+
+        return DataProto.from_dict(non_tensors={"raw_prompt_ids": genrm_raw_prompt_ids})
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def init_model(self):
@@ -132,12 +134,6 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
         data = data.to(get_device_id())
 
         prompts = self._switch_genrm_chat_template(data)
-        prompts.batch = prompts.batch.to(get_device_id())
-        meta_info = {
-            "eos_token_id": self.generation_config.eos_token_id if self.generation_config is not None else self.tokenizer.eos_token_id,
-            "pad_token_id": self.generation_config.pad_token_id if self.generation_config is not None else self.tokenizer.pad_token_id,
-        }
-        prompts.meta_info.update(meta_info)
         timing_generate = {}
         with self.genrm_sharding_manager:
             log_gpu_memory_usage("After entering GenRM sharding manager", logger=logger)
@@ -146,7 +142,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
             with simple_timer("generate_sequences", timing_generate):
                 output = self.genrm.generate_sequences(prompts=prompts)
 
-            log_gpu_memory_usage("After rollout generation", logger=logger)
+            log_gpu_memory_usage("After GenRM generation", logger=logger)
             output = self.genrm_sharding_manager.postprocess_data(output)
 
         timing_generate.update(self.rollout_sharding_manager.timing)
@@ -154,7 +150,6 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
         # to make sure meta_info["timing"] is the same
         timing_generate = reduce_timing(timing_generate)
         output.meta_info["timing"] = timing_generate
-        output = output.to("cpu")
         # clear kv cache
         get_torch_device().empty_cache()
         return output

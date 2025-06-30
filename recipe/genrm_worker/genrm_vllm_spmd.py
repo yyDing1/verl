@@ -53,29 +53,9 @@ class vLLMSyncInfer:
 
     @GPUMemoryLogger(role="GenRM infer spmd", logger=logger)
     @torch.no_grad()
-    def generate_sequences(self, prompts: DataProto, **kwargs) -> DataProto:
-        # rebuild vllm cache engine
-        if self.config.free_cache_engine:
-            self.inference_engine.init_cache_engine()
-
-        idx = prompts.batch["input_ids"]  # (bs, prompt_length)
-        # left-padded attention_mask
-        attention_mask = prompts.batch["attention_mask"]
-        position_ids = prompts.batch["position_ids"]
-
-        # used to construct attention_mask
-        eos_token_id = prompts.meta_info["eos_token_id"]
-
-        batch_size = idx.size(0)
-
+    def generate_sequences(self, prompts: DataProto) -> DataProto:
         non_tensor_batch = prompts.non_tensor_batch
-        if "raw_prompt_ids" not in non_tensor_batch:
-            # TODO: Remove
-            from verl.workers.rollout.vllm_rollout.vllm_rollout_spmd import _pre_process_inputs
-            non_tensor_batch["raw_prompt_ids"] = np.array([_pre_process_inputs(self.pad_token_id, idx[i]) for i in range(batch_size)], dtype=object)
-
-        if batch_size != len(non_tensor_batch["raw_prompt_ids"]):
-            raise RuntimeError("vllm sharding manager is not work properly.")
+        raw_prompt_ids = non_tensor_batch["raw_prompt_ids"]
 
         if "multi_modal_data" in non_tensor_batch:
             vllm_inputs = []
@@ -100,15 +80,7 @@ class vLLMSyncInfer:
         response = []
         for output in outputs:
             for sample_id in range(len(output.outputs)):
-                response_ids = output.outputs[sample_id].token_ids
-                response.append(response_ids)
+                response_text = output.outputs[sample_id].text
+                response.append(response_text)
 
-        breakpoint()
-        # response = pad_2d_list_to_length(response, self.pad_token_id, max_length=self.config.response_length).to(idx.device)
-        if self.sampling_params.n > 1:
-            from verl.workers.rollout.vllm_rollout.vllm_rollout_spmd import _repeat_interleave
-            idx = _repeat_interleave(idx, self.sampling_params.n)
-            attention_mask = _repeat_interleave(attention_mask, self.sampling_params.n)
-            position_ids = _repeat_interleave(position_ids, self.sampling_params.n)
-
-        return DataProto()
+        return DataProto(non_tensor_batch={"genrm_response": response})

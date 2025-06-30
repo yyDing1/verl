@@ -1,6 +1,4 @@
-# Copyright 2024 Bytedance Ltd. and/or its affiliates
-# Copyright 2023-2024 SGLang Team
-# Copyright 2025 ModelBest Inc. and/or its affiliates
+# Copyright 2025 Bytedance Ltd. and/or its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1019,6 +1017,7 @@ class RayPPOTrainer:
                         if self.use_rm:
                             reward_tensor = self.rm_wg.compute_rm_score(batch)
                             batch = batch.union(reward_tensor)
+                            breakpoint()
 
                         if self.config.reward_model.launch_reward_fn_async:
                             future_reward = compute_reward_async.remote(batch, self.config, self.tokenizer)
