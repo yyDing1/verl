@@ -27,7 +27,7 @@ from verl.third_party.vllm import customized_vllm
 from verl.single_controller.base import Worker
 from verl.single_controller.base.decorator import Dispatch, register
 from verl.utils import hf_processor, hf_tokenizer, omega_conf_to_dataclass
-from verl.utils.debug import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage
+from verl.utils.debug import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage, simple_timer
 from verl.utils.device import get_device_id, get_device_name, get_nccl_backend
 from verl.utils.fs import copy_to_local
 from verl.utils.import_utils import import_external_libs
@@ -58,6 +58,7 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
 
     def _build_genrm(self, config):
         from torch.distributed.device_mesh import init_device_mesh
+        from verl.utils.model import get_generation_config
 
         infer_tp = config.vllm_infer.tensor_model_parallel_size
         dp = self.world_size // infer_tp
@@ -66,10 +67,12 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
 
         log_gpu_memory_usage("Before building GenRM", logger=logger)
         use_shm = config.model.get("use_shm", False)
+        trust_remote_code = config.model.get("trust_remote_code", False)
         local_path = copy_to_local(config.model.path, use_shm=use_shm)
         input_tokenizer_local_path = copy_to_local(config.model.input_tokenizer, use_shm=use_shm)
-        self.input_tokenizer = hf_tokenizer(input_tokenizer_local_path, trust_remote_code=config.model.get("trust_remote_code", False))
-        self.tokenizer = hf_tokenizer(local_path, trust_remote_code=config.model.get("trust_remote_code", False))
+        self.input_tokenizer = hf_tokenizer(input_tokenizer_local_path, trust_remote_code=trust_remote_code)
+        self.tokenizer = hf_tokenizer(local_path, trust_remote_code=trust_remote_code)
+        self.generation_config = get_generation_config(local_path, trust_remote_code=trust_remote_code)
 
         from .genrm_sharding_manager import VLLMShardingManager
         from .genrm_vllm_spmd import vLLMSyncInfer
@@ -127,9 +130,31 @@ class GenerativeRewardModelWorker(Worker, DistProfilerExtension):
     @DistProfiler.annotate(color="brown")
     def compute_rm_score(self, data: DataProto):
         data = data.to(get_device_id())
-        print("=" * 100)
-        breakpoint()
-        if self.config.free_cache_engine:
-            self.inference_engine.init_cache_engine()
 
-        return
+        prompts = self._switch_genrm_chat_template(data)
+        prompts.batch = prompts.batch.to(get_device_id())
+        meta_info = {
+            "eos_token_id": self.generation_config.eos_token_id if self.generation_config is not None else self.tokenizer.eos_token_id,
+            "pad_token_id": self.generation_config.pad_token_id if self.generation_config is not None else self.tokenizer.pad_token_id,
+        }
+        prompts.meta_info.update(meta_info)
+        timing_generate = {}
+        with self.genrm_sharding_manager:
+            log_gpu_memory_usage("After entering GenRM sharding manager", logger=logger)
+
+            prompts = self.genrm_sharding_manager.preprocess_data(prompts)
+            with simple_timer("generate_sequences", timing_generate):
+                output = self.genrm.generate_sequences(prompts=prompts)
+
+            log_gpu_memory_usage("After rollout generation", logger=logger)
+            output = self.genrm_sharding_manager.postprocess_data(output)
+
+        timing_generate.update(self.rollout_sharding_manager.timing)
+        # We calculate the average timing across all ranks
+        # to make sure meta_info["timing"] is the same
+        timing_generate = reduce_timing(timing_generate)
+        output.meta_info["timing"] = timing_generate
+        output = output.to("cpu")
+        # clear kv cache
+        get_torch_device().empty_cache()
+        return output
