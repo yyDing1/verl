@@ -2,7 +2,7 @@
 set -xeuo pipefail
 
 project_name='DAPO-DYY'
-exp_name='DAPO-Qwen3-7B-Baseline'
+exp_name='DAPO-Qwen3-4B-Baseline-7.3'
 
 adv_estimator=grpo
 
@@ -35,7 +35,7 @@ NGPUS_PER_NODE=${NGPUS_PER_NODE:-8}
 # Paths
 RAY_DATA_HOME=${RAY_DATA_HOME:-"${HOME}/verl"}
 # very important! please modify the max_position_embeddings in config.json to 32768 after downloading from huggingface
-MODEL_PATH=${MODEL_PATH:-"${RAY_DATA_HOME}/models/Qwen3-3B-Base"}
+MODEL_PATH=${MODEL_PATH:-"${RAY_DATA_HOME}/models/Qwen3-4B-Base"}
 CKPTS_DIR=${CKPTS_DIR:-"${RAY_DATA_HOME}/ckpts/${project_name}/${exp_name}"}
 TRAIN_FILE=${TRAIN_FILE:-"${RAY_DATA_HOME}/data/dapo-math-17k.parquet"}
 TEST_FILE=${TEST_FILE:-"${RAY_DATA_HOME}/data/aime-2024.parquet"}
