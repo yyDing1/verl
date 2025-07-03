@@ -2,8 +2,7 @@
 set -xeuo pipefail
 
 project_name='DAPO-DYY'
-# exp_name='DAPO-Qwen3-4B-Baseline-7.4'
-exp_name='debug'
+exp_name='DAPO-Qwen3-4B-Baseline-Boxed'
 
 adv_estimator=grpo
 
