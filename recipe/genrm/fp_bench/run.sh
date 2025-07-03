@@ -5,12 +5,13 @@ python3 -m verl.trainer.main_generation \
     trainer.n_gpus_per_node=8 \
     data.path=/mnt/hdfs/resources/fp_bench/processbench_full.parquet \
     data.prompt_key=prompt \
-    data.batch_size=2048 \
+    data.batch_size=4096 \
     data.n_samples=1 \
-    data.output_path=/mnt/hdfs/resources/fp_bench/processbench_full_qwen3-8b-ins_greedy-32768.parquet \
+    data.output_path=/mnt/hdfs/resources/fp_bench/processbench_full_qwen3-8b-ins_think_suggested.parquet \
     model.path=Qwen/Qwen3-8B \
-    rollout.temperature=0.0 \
-    rollout.top_p=1.0 \
+    rollout.temperature=0.6 \
+    rollout.top_p=0.95 \
+    rollout.top_k=20 \
     rollout.prompt_length=4096 \
     rollout.response_length=32768 \
     rollout.tensor_model_parallel_size=1 \
