@@ -38,7 +38,7 @@ QUERY_TEMPLATE_PRM_GT = (
 )
 
 def get_response(problem, solution_str, ground_truth):
-    prompt = GENRM_PROMPT_TEMPLATE.format(problem=problem, solution=solution_str)
+    prompt = QUERY_TEMPLATE_PRM_GT.format(problem=problem, solution=solution_str)
     messages = [{"role": "user", "content": prompt}]
     for attempt in range(MAX_RETRIES):
         try:
