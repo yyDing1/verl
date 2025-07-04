@@ -115,7 +115,7 @@ python3 -m verl.trainer.main_ppo \
     +reward_model.reward_kwargs.overlong_buffer_cfg.penalty_factor=${overlong_penalty_factor} \
     +reward_model.reward_kwargs.overlong_buffer_cfg.log=False \
     +reward_model.reward_kwargs.max_resp_len=${max_response_length} \
-    custom_reward_function.path=/opt/tiger/verl/recipe/genrm/baselines_func/reward_function.py \
+    custom_reward_function.path=recipe/genrm/baselines_func/reward_function.py \
     custom_reward_function.name=compute_score \
     trainer.logger=['console','wandb'] \
     trainer.project_name="${project_name}" \
