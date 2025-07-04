@@ -62,7 +62,6 @@ ray job submit --no-wait --runtime-env="${RUNTIME_ENV}" \
     -- python3 -m verl.trainer.main_ppo \
     data.train_files="${TRAIN_FILE}" \
     data.val_files="${TEST_FILE}" \
-    data.return_raw_chat=${return_raw_chat} \
     data.prompt_key=prompt \
     data.truncation='left' \
     data.max_prompt_length=${max_prompt_length} \
