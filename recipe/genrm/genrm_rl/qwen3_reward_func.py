@@ -78,7 +78,8 @@ def compute_score_rule_with_genrm(solution_str, ground_truth, extra_info, **kwar
     question, split = extra_info["question"], extra_info["split"]
     rule_result = compute_score_rule(solution_str, ground_truth)
     if rule_result["acc"] == 0:
-        rule_result[""]
+        rule_result["false_positive"] = 0
+        
         pass
 
 def compute_score_batch(data_sources, solution_strs, ground_truths, extra_infos):
