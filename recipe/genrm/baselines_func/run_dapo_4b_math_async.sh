@@ -2,7 +2,7 @@
 set -xeuo pipefail
 
 project_name='DAPO-DYY'
-exp_name='DAPO-Qwen3-4B-Baseline-Boxed'
+exp_name='DAPO-Qwen3-4B-Baseline-Boxed-Async'
 
 adv_estimator=grpo
 
@@ -62,6 +62,7 @@ ray job submit --no-wait --runtime-env="${RUNTIME_ENV}" \
     -- python3 -m verl.trainer.main_ppo \
     data.train_files="${TRAIN_FILE}" \
     data.val_files="${TEST_FILE}" \
+    data.return_raw_chat=True \
     data.prompt_key=prompt \
     data.truncation='left' \
     data.max_prompt_length=${max_prompt_length} \
@@ -96,6 +97,8 @@ ray job submit --no-wait --runtime-env="${RUNTIME_ENV}" \
     actor_rollout_ref.actor.grad_clip=1.0 \
     actor_rollout_ref.actor.loss_agg_mode=${loss_agg_mode} \
     actor_rollout_ref.actor.ulysses_sequence_parallel_size=${sp_size} \
+    actor_rollout_ref.rollout.name=vllm \
+    actor_rollout_ref.rollout.name=async \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.80 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=${gen_tp} \
     actor_rollout_ref.rollout.enable_chunked_prefill=True \
