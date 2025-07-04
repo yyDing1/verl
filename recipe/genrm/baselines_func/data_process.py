@@ -127,7 +127,7 @@ if __name__ == "__main__":
     for task in args.tasks:
         test_datasets.append(TASK2DATA[task]())
     test_dataset = concatenate_datasets(test_datasets)
-    test_dataset = concatenate_datasets([test_dataset for _ in range(32)])
+    # test_dataset = concatenate_datasets([test_dataset for _ in range(32)])
     print(len(train_dataset), len(test_dataset))
 
     local_dir = args.local_dir
