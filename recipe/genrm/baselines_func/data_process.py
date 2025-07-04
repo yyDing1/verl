@@ -122,10 +122,12 @@ if __name__ == "__main__":
                 raise NotImplementedError(f"{task} has not been supported.")
 
     train_dataset = build_dapo_train_dataset()
+    train_dataset = concatenate_datasets([train_dataset for _ in range(20)])
     test_datasets = []
     for task in args.tasks:
         test_datasets.append(TASK2DATA[task]())
     test_dataset = concatenate_datasets(test_datasets)
+    print(len(train_dataset), len(test_dataset))
 
     local_dir = args.local_dir
     hdfs_dir = args.hdfs_dir
