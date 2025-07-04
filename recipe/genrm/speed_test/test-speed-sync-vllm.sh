@@ -134,7 +134,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.test_freq=10 \
     trainer.save_freq=-1 \
     trainer.total_epochs=30 \
-    trainer.total_training_steps=10 \
+    trainer.total_training_steps=40 \
     trainer.default_local_dir="${CKPTS_DIR}" \
     trainer.resume_mode=disable \
     trainer.log_val_generations=10
