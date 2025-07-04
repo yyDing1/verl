@@ -59,7 +59,7 @@ def build_aime2024_dataset():
     data_source = "Maxwell-Jia/AIME_2024"
     print(f"Loading the {data_source} dataset from huggingface...", flush=True)
     dataset = load_dataset(data_source, split="train")
-    map_fn = partial(example_map_fn, process_fn=process_aime2024, data_source=data_source, ability="Math", split="test")
+    map_fn = partial(example_map_fn, process_fn=process_aime2024, data_source="aime24", ability="Math", split="test")
     dataset = dataset.map(map_fn, with_indices=True, remove_columns=dataset.column_names)
     return dataset
 
@@ -93,7 +93,7 @@ def build_dapo_train_dataset():
     data_source = "open-r1/DAPO-Math-17k-Processed"
     print(f"Loading the {data_source} dataset from huggingface...", flush=True)
     dataset = load_dataset(data_source, "all", split="train")
-    map_fn = partial(example_map_fn, process_fn=process_dapo, data_source=data_source, ability="Math", split="train")
+    map_fn = partial(example_map_fn, process_fn=process_dapo, data_source="math-dapo", ability="Math", split="train")
     dataset = dataset.map(map_fn, with_indices=True, remove_columns=dataset.column_names)
     return dataset
 
@@ -130,8 +130,8 @@ if __name__ == "__main__":
     local_dir = args.local_dir
     hdfs_dir = args.hdfs_dir
 
-    train_dataset.to_parquet(os.path.join(local_dir, "train.parquet"))
-    test_dataset.to_parquet(os.path.join(local_dir, "test.parquet"))
+    train_dataset.to_parquet(os.path.join(local_dir, "dapo-math-17k-boxed.parquet"))
+    test_dataset.to_parquet(os.path.join(local_dir, "aime-2024-boxed.parquet"))
 
     if hdfs_dir is not None:
         makedirs(hdfs_dir)
