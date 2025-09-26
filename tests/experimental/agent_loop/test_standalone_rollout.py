@@ -63,7 +63,9 @@ async def test_standalone_(init_config, tp_size):
     # create standalone rollout server
     rollout_server_class = get_rollout_replica_class(init_config.actor_rollout_ref.rollout.name)
     rollout_servers = [
-        rollout_server_class(replica_rank=replica_rank, config=rollout_config, model_config=model_config, gpus_per_node=2)
+        rollout_server_class(
+            replica_rank=replica_rank, config=rollout_config, model_config=model_config, gpus_per_node=2
+        )
         for replica_rank in range(num_replicas)
     ]
     await asyncio.gather(*[server.init_standalone() for server in rollout_servers])
