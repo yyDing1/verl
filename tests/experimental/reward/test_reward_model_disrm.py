@@ -19,24 +19,6 @@ from hydra import compose, initialize_config_dir
 from verl.experimental.reward import RewardModelManager
 from verl.protocol import DataProto
 
-GRM_PROMPT_TEMPLATE = """
-You are given a problem and a proposed solution.
-
-Problem:
-{problem}
-
-Solution:
-{solution}
-
-Please evaluate how well the solution addresses the problem. 
-Give a score from 1 to 10, where:
-- 1 means the solution is completely irrelevant or incorrect.
-- 5 means the solution is partially correct but incomplete or not well reasoned.
-- 10 means the solution is fully correct, well-reasoned, and directly solves the problem.
-
-Only output the score as a single number (integer).
-""".strip()
-
 
 def create_data_samples() -> DataProto:
     convs = [
@@ -58,7 +40,13 @@ def create_data_samples() -> DataProto:
         },
     ]
 
-    messages = [[{"role": "user", "content": GRM_PROMPT_TEMPLATE.format(**conv)}] for conv in convs]
+    messages = [
+        [
+            {"role": "user", "content": conv["problem"]},
+            {"role": "assistant", "content": conv["solution"]},
+        ]
+        for conv in convs
+    ]
     prompts = DataProto.from_dict(
         non_tensors={
             "raw_prompt": messages,

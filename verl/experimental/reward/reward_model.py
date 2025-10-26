@@ -15,11 +15,10 @@
 import asyncio
 import json
 import logging
-import os
 import math
+import os
 
 import aiohttp
-from openai.types.chat import ChatCompletion
 
 from verl import DataProto
 from verl.single_controller.ray.base import RayWorkerGroup
@@ -134,18 +133,13 @@ class RewardModelManager:
         ]
         tasks = [self.post_request(payload, "v1/chat/completions") for payload in payloads]
         results = self._run_all(tasks)
-        results = [
-            {"grm_response": result["choices"][0]["message"]["content"] for result in results}
-        ]
+        results = [{"grm_response": result["choices"][0]["message"]["content"]} for result in results]
         return results
 
     def compute_score_disrm(self, prompt: DataProto):
         engine_name = self.config.rollout.name
         payloads = [
-            {
-                "model": self.config.model.path,
-                "input": self.tokenizer.apply_chat_template(messages, tokenize=False)
-            }
+            {"model": self.config.model.path, "input": self.tokenizer.apply_chat_template(messages, tokenize=False)}
             for messages in prompt.non_tensor_batch.get("raw_prompt")
         ]
         if engine_name == "vllm":
@@ -155,7 +149,7 @@ class RewardModelManager:
             results = [
                 {
                     "prob": result["data"][0]["probs"][0],
-                    "reward_score": math.log(result["data"][0]["probs"][0] / (1 - result["data"][0]["probs"][0]))
+                    "reward_score": math.log(result["data"][0]["probs"][0] / (1 - result["data"][0]["probs"][0])),
                 }
                 for result in results
             ]
@@ -164,9 +158,7 @@ class RewardModelManager:
         elif engine_name == "sglang":
             tasks = [self.post_request(payload, "v1/embeddings") for payload in payloads]
             results = self._run_all(tasks)
-            results = [
-                {"reward_score": result["data"][0]["embedding"][0]} for result in results
-            ]
+            results = [{"reward_score": result["data"][0]["embedding"][0]} for result in results]
             return results
         else:
             raise ValueError(f"Unknown Engine: {engine_name}")
