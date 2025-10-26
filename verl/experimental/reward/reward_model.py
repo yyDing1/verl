@@ -108,12 +108,12 @@ class RewardModelManager:
 
         return asyncio.run(run_all())
 
-    async def chat_complete(self, chat_complete_request: dict):
-        url = f"http://{self.router_address}/v1/chat/completions"
+    async def post_request(self, payload: dict, endpoint: str):
+        url = f"http://{self.router_address}/{endpoint}"
         try:
             timeout = aiohttp.ClientTimeout(total=None)
             session = aiohttp.ClientSession(timeout=timeout)
-            async with session.post(url, json=chat_complete_request) as resp:
+            async with session.post(url, json=payload) as resp:
                 output = await resp.text()
                 output = json.loads(output)
                 return ChatCompletion(**output)
@@ -123,7 +123,7 @@ class RewardModelManager:
             await session.close()
 
     def generate_sequences(self, prompts: DataProto, sampling_params: dict):
-        chat_complete_requests = [
+        payloads = [
             {
                 "model": self.config.model.path,
                 "messages": list(messages),
@@ -131,6 +131,29 @@ class RewardModelManager:
             }
             for messages in prompts.non_tensor_batch.get("raw_prompt")
         ]
-        tasks = [self.chat_complete(chat_complete_request) for chat_complete_request in chat_complete_requests]
+        tasks = [self.post_request(payload, "v1/chat/completions") for payload in payloads]
         results = self._run_all(tasks)
         return results
+
+    def compute_score_disrm(self, prompt: DataProto):
+        engine_name = self.config.rollout.name
+        messages = prompt.non_tensor_batch.get("raw_prompt")
+        if engine_name == "vllm":
+            pass
+        elif engine_name == "sglang":
+            payloads = [
+                {
+                    "model": self.config.model.path,
+                    "input": self.tokenizer.apply_chat_template(messages, tokenize=False)
+                }
+                for messages in prompt.non_tensor_batch.get("raw_prompt")
+            ]
+            breakpoint()
+            tasks = [self.post_request(payload, "v1/embeddings") for payload in payloads]
+            results = self._run_all(tasks)
+            scores = [
+                {"reward_score": result["data"][0]["embedding"][0]} for result in results
+            ]
+            return scores
+        else:
+            raise ValueError(f"Unknown Engine: {engine_name}")
