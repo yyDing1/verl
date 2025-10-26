@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import math
 
 import aiohttp
 from openai.types.chat import ChatCompletion
@@ -116,7 +117,7 @@ class RewardModelManager:
             async with session.post(url, json=payload) as resp:
                 output = await resp.text()
                 output = json.loads(output)
-                return ChatCompletion(**output)
+                return output
         except Exception as e:
             raise e
         finally:
@@ -133,27 +134,39 @@ class RewardModelManager:
         ]
         tasks = [self.post_request(payload, "v1/chat/completions") for payload in payloads]
         results = self._run_all(tasks)
+        results = [
+            {"grm_response": result["choices"][0]["message"]["content"] for result in results}
+        ]
         return results
 
     def compute_score_disrm(self, prompt: DataProto):
         engine_name = self.config.rollout.name
-        messages = prompt.non_tensor_batch.get("raw_prompt")
+        payloads = [
+            {
+                "model": self.config.model.path,
+                "input": self.tokenizer.apply_chat_template(messages, tokenize=False)
+            }
+            for messages in prompt.non_tensor_batch.get("raw_prompt")
+        ]
         if engine_name == "vllm":
-            pass
-        elif engine_name == "sglang":
-            payloads = [
+            tasks = [self.post_request(payload, "classify") for payload in payloads]
+            results = self._run_all(tasks)
+            # dyy: vllm /classify and /reward returns sigmoid results
+            results = [
                 {
-                    "model": self.config.model.path,
-                    "input": self.tokenizer.apply_chat_template(messages, tokenize=False)
+                    "prob": result["data"][0]["probs"][0],
+                    "reward_score": math.log(result["data"][0]["probs"][0] / (1 - result["data"][0]["probs"][0]))
                 }
-                for messages in prompt.non_tensor_batch.get("raw_prompt")
+                for result in results
             ]
-            breakpoint()
+            return results
+
+        elif engine_name == "sglang":
             tasks = [self.post_request(payload, "v1/embeddings") for payload in payloads]
             results = self._run_all(tasks)
-            scores = [
+            results = [
                 {"reward_score": result["data"][0]["embedding"][0]} for result in results
             ]
-            return scores
+            return results
         else:
             raise ValueError(f"Unknown Engine: {engine_name}")

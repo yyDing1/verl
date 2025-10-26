@@ -110,12 +110,11 @@ def test_reward_model_manager():
         "top_k": 20,
     }
     results = reward_model_manager.generate_sequences(prompts, sampling_params)
-    responses = [result.choices[0].message.content for result in results]
 
-    for idx, (conv, response) in enumerate(zip(convs, responses, strict=False)):
+    for idx, (conv, result) in enumerate(zip(convs, results, strict=False)):
         print(f"Problem {idx}:\n{conv['problem']}\n")
         print(f"AI Solution {idx}:\n{conv['solution']}\n")
-        print(f"GRM Response {idx}:\n{response}\n")
+        print(f"GRM Response {idx}:\n{result['grm_response']}\n")
         print("=" * 50 + "\n")
 
     ray.shutdown()

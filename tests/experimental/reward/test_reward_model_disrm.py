@@ -81,7 +81,7 @@ def test_reward_model_manager():
     with initialize_config_dir(config_dir=os.path.abspath("recipe/fapo/config")):
         config = compose("rm_config")
 
-    model_path = os.path.expanduser("/mnt/hdfs/yyding/models/Skywork-Reward-Llama-3.1-8B-v0.2")
+    model_path = os.path.expanduser("Skywork/Skywork-Reward-V2-Llama-3.2-1B")
 
     config.reward_model.reward_manager = "dapo"
     config.reward_model.enable = True
@@ -112,7 +112,3 @@ def test_reward_model_manager():
         print("=" * 50 + "\n")
 
     ray.shutdown()
-
-
-if __name__ == "__main__":
-    test_reward_model_manager()
