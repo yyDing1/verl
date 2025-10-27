@@ -137,6 +137,14 @@ class RewardModelManager:
         return results
 
     def compute_score_disrm(self, prompt: DataProto):
+        """Compute reward scores for given prompts using Discriminative Reward Model (DisRM).
+
+        Args:
+            prompt (DataProto): Input prompts.
+
+        Returns:
+            list[dict]: Reward scores.
+        """
         engine_name = self.config.rollout.name
         payloads = [
             {"model": self.config.model.path, "input": self.tokenizer.apply_chat_template(messages, tokenize=False)}
@@ -153,12 +161,11 @@ class RewardModelManager:
                 }
                 for result in results
             ]
-            return results
-
         elif engine_name == "sglang":
             tasks = [self.post_request(payload, "v1/embeddings") for payload in payloads]
             results = self._run_all(tasks)
             results = [{"reward_score": result["data"][0]["embedding"][0]} for result in results]
-            return results
         else:
             raise ValueError(f"Unknown Engine: {engine_name}")
+
+        return results

@@ -81,7 +81,7 @@ def test_reward_model_manager():
     with initialize_config_dir(config_dir=os.path.abspath("recipe/fapo/config")):
         config = compose("rm_config")
 
-    model_path = os.path.expanduser("~/models/Qwen/Qwen2.5-0.5B-Instruct")
+    model_path = os.path.expanduser("~/models/Qwen/Qwen2.5-1.5B-Instruct")
 
     config.reward_model.reward_manager = "dapo"
     config.reward_model.enable = True
