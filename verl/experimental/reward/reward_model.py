@@ -78,6 +78,7 @@ class RewardModelManager:
             self._run_all([server.init_colocated(self.resource_pool) for server in self.rollout_replicas])
         else:
             self._run_all([server.init_standalone() for server in self.rollout_replicas])
+        breakpoint()
         self.server_handles = [server._server_handle for server in self.rollout_replicas]
         self.server_addresses = [server._server_address for server in self.rollout_replicas]
 

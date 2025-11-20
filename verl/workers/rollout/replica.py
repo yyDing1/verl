@@ -129,7 +129,12 @@ class RolloutReplica(ABC):
             resource_pool: RayResourcePool, ray placement group where hybrid engine processes have been launched.
         """
         self.rollout_mode = RolloutMode.COLOCATED
-        self.resource_pool = resource_pool
+        self.resource_pool = type(resource_pool)(
+            process_on_nodes=[self.gpus_per_node] * self.nnodes,
+            use_gpu=resource_pool.use_gpu,
+        )
+        self.resource_pool.pgs = resource_pool.pgs[self.world_size * self.replica_rank : self.world_size * (self.replica_rank + 1)]
+
         worker_group = RayWorkerGroup(
             resource_pool=self.resource_pool,
             ray_cls_with_init=self.get_ray_class_with_init_args(),

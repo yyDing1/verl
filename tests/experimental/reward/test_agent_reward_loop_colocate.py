@@ -95,6 +95,7 @@ def test_agent_loop_reward_manager():
         ray_cls_with_init=actor_rollout_cls,
     )
     actor_rollout_wg.init_model()
+
     agent_loop_manager = AgentLoopManager(config, worker_group=actor_rollout_wg)
     reward_model_manager = RewardModelManager(config.reward_model, resource_pool=resource_pool)
     breakpoint()
