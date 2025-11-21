@@ -389,9 +389,9 @@ class RayWorkerGroup(WorkerGroup):
 
         rank = -1
         local_world_size = resource_pool.store[0]
-        assert local_world_size * (self.replica_rank + 1) <= resource_pool.world_size, (
+        assert self.replica_world_size * (self.replica_rank + 1) <= resource_pool.world_size, (
             f"resource_pool.world_size={resource_pool.world_size} is not enough for"
-            f"replica_rank={self.replica_rank} with local_world_size={local_world_size}"
+            f"replica_rank={self.replica_rank} with replica_world_size={self.replica_world_size}"
         )
         pgs = sort_placement_group_by_node_ip(pgs)
         self._get_master_addr_port(pgs[0])
