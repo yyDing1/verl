@@ -320,6 +320,8 @@ class RayWorkerGroup(WorkerGroup):
             if replica_world_size is None:
                 self.replica_world_size = resource_pool.world_size
                 assert self.replica_rank == 0, f"only one replica is allowed, but got {self.replica_rank=}"
+            else:
+                self.replica_world_size = replica_world_size
             self._init_with_resource_pool(
                 resource_pool=resource_pool,
                 ray_cls_with_init=ray_cls_with_init,
