@@ -199,7 +199,7 @@ class RolloutReplica(ABC):
 
     async def sleep(self):
         """Sleep each rollout server."""
-        await asyncio.gather(*[server.en.remote() for server in self.servers])
+        await asyncio.gather(*[server.sleep.remote() for server in self.servers])
 
 
 class RolloutReplicaRegistry:
