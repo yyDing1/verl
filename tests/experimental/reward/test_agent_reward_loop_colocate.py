@@ -21,11 +21,11 @@ from transformers import AutoTokenizer
 from verl.experimental.agent_loop import AgentLoopManager
 from verl.experimental.reward.reward_model import RewardModelManager
 from verl.protocol import DataProto
-from verl.trainer.main_ppo import create_rl_sampler
-from verl.utils.dataset.rl_dataset import RLHFDataset, collate_fn
-from verl.trainer.ppo.ray_trainer import RayResourcePool, ResourcePoolManager
 from verl.single_controller.ray import RayClassWithInitArgs, RayWorkerGroup
-from verl.workers.fsdp_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker, RewardModelWorker
+from verl.trainer.main_ppo import create_rl_sampler
+from verl.trainer.ppo.ray_trainer import ResourcePoolManager
+from verl.utils.dataset.rl_dataset import RLHFDataset, collate_fn
+from verl.workers.fsdp_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker
 
 
 def test_agent_loop_reward_manager():
@@ -98,7 +98,6 @@ def test_agent_loop_reward_manager():
 
     agent_loop_manager = AgentLoopManager(config, worker_group=actor_rollout_wg)
     reward_model_manager = RewardModelManager(config.reward_model, resource_pool=resource_pool)
-    breakpoint()
 
     # 2. init test data
     local_folder = os.path.expanduser("~/data/gsm8k/")
@@ -127,9 +126,11 @@ def test_agent_loop_reward_manager():
     batch_dict = next(iter(dataloader))
     batch = DataProto.from_single_dict(batch_dict)
     gen_batch = agent_loop_manager.generate_sequences(prompts=batch)
+    sampling_params = {"temperature": 0.0, "top_p": 1.0, "max_tokens": 1024}
+    genrm_outputs = reward_model_manager.generate_sequences(gen_batch, sampling_params=sampling_params)
 
-    rm_scores = gen_batch.batch["rm_scores"]
-    sample_scores = rm_scores.sum(dim=1)
-    print(sample_scores)
+    print(genrm_outputs[0])
+
+    print("done")
 
     ray.shutdown()

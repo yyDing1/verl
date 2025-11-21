@@ -380,7 +380,7 @@ class RayWorkerGroup(WorkerGroup):
 
         strategy = "PACK"
         if bin_pack:
-            c = "STRICT_PACK"
+            strategy = "STRICT_PACK"
         pgs = resource_pool.get_placement_groups(strategy=strategy, device_name=self.device_name)
         world_size = self.replica_world_size
         self._world_size = world_size

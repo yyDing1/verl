@@ -21,7 +21,7 @@ import aiohttp
 from openai.types.chat import ChatCompletion
 
 from verl import DataProto
-from verl.single_controller.ray.base import RayWorkerGroup, RayResourcePool
+from verl.single_controller.ray.base import RayResourcePool
 from verl.workers.config import HFModelConfig, RewardModelConfig
 from verl.workers.rollout.replica import get_rollout_replica_class
 
@@ -78,7 +78,7 @@ class RewardModelManager:
             self._run_all([server.init_colocated(self.resource_pool) for server in self.rollout_replicas])
         else:
             self._run_all([server.init_standalone() for server in self.rollout_replicas])
-        breakpoint()
+
         self.server_handles = [server._server_handle for server in self.rollout_replicas]
         self.server_addresses = [server._server_address for server in self.rollout_replicas]
 
@@ -124,6 +124,8 @@ class RewardModelManager:
             await session.close()
 
     def generate_sequences(self, prompts: DataProto, sampling_params: dict):
+        if self.config.rollout.free_cache_engine:
+            self.wake_up()
         chat_complete_requests = [
             {
                 "model": self.config.model.path,
@@ -134,4 +136,6 @@ class RewardModelManager:
         ]
         tasks = [self.chat_complete(chat_complete_request) for chat_complete_request in chat_complete_requests]
         results = self._run_all(tasks)
+        if self.config.rollout.free_cache_engine:
+            self.sleep()
         return results

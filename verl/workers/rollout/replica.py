@@ -129,11 +129,7 @@ class RolloutReplica(ABC):
             resource_pool: RayResourcePool, ray placement group where hybrid engine processes have been launched.
         """
         self.rollout_mode = RolloutMode.COLOCATED
-        self.resource_pool = type(resource_pool)(
-            process_on_nodes=[self.gpus_per_node] * self.nnodes,
-            use_gpu=resource_pool.use_gpu,
-        )
-        self.resource_pool.pgs = resource_pool.pgs[self.world_size * self.replica_rank : self.world_size * (self.replica_rank + 1)]
+        self.resource_pool = resource_pool
 
         worker_group = RayWorkerGroup(
             resource_pool=self.resource_pool,
@@ -142,6 +138,8 @@ class RolloutReplica(ABC):
             name_prefix=f"rollout_colocate_{self.replica_rank}"
             if not self.is_reward_model
             else f"rollout_reward_colocate_{self.replica_rank}",
+            replica_rank=self.replica_rank,
+            replica_world_size=self.world_size,
         )
         self.workers = worker_group.workers
         await self.launch_servers()
@@ -201,7 +199,7 @@ class RolloutReplica(ABC):
 
     async def sleep(self):
         """Sleep each rollout server."""
-        await asyncio.gather(*[server.sleep.remote() for server in self.servers])
+        await asyncio.gather(*[server.en.remote() for server in self.servers])
 
 
 class RolloutReplicaRegistry:
