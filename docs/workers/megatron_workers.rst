@@ -4,7 +4,7 @@ Megatron-LM Backend
 Last updated: 12/01/2025.
 
 We support Megatron Backend by implementing various workers for actor,
-critic, reference, rollout and reward models. We also implement the
+critic, reference, rollout models. We also implement the
 ``3DHybridEngine`` using Megatron-LM and vLLM/SGLang in
 `megatron_vllm.py <https://github.com/volcengine/verl/blob/main/verl/workers/sharding_manager/megatron_vllm.py>`_
 and `megatron_sglang.py <https://github.com/volcengine/verl/blob/main/verl/workers/sharding_manager/megatron_sglang.py>`_.
@@ -206,8 +206,8 @@ actor model is also wrapped by the ``MegatronPPOActor``.
 - In this function, the reference model will call the compute log prob
   function in ``MegatronPPOActor`` to compute the reference log prob.
 
-CriticWorker and RewardWorker
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CriticWorker
+^^^^^^^^^^^^
 
 1. Model initialization
 
@@ -227,14 +227,6 @@ additional initialization for the Optimizer.
 
    @register(dispatch_mode=Dispatch.MEGATRON_COMPUTE_PROTO)
    def update_critic(self, data: DataProto):
-
-4. Compute Reward
-
-.. code:: python
-
-   @register(dispatch_mode=Dispatch.MEGATRON_COMPUTE_PROTO)
-   def compute_rm_score(self, data: DataProto):
-
 
 Utils of Train Optimization
 ---------------------------

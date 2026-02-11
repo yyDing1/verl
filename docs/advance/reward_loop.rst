@@ -257,7 +257,7 @@ Below we provide an example of a custom reward function using GenRM.
 A runnable and reproducible example that demonstrates how to use a rule-based reward function together with a GenRM is provided in the `recipe/fapo`_ directory for reference. Welcome to use and cite.
 
 Reward Model Arch Design
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 We support multiple execution modes for reward models during:
 

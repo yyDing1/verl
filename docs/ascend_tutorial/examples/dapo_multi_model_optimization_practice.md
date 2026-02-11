@@ -17,7 +17,7 @@ DAPO的论文可以参考：[DAPO](https://arxiv.org/pdf/2503.14476)，其中包
   在dapo算法中，必须配置成dapo。
 
 ```
-reward_model.reward_manager.name=dapo
+reward.reward_manager.name=dapo
 ```
 
 - **Clip-Higher 更高裁剪**
@@ -51,9 +51,9 @@ actor_rollout_ref.actor.loss_agg_mode=${loss_agg_mode}
   将 `overlong_buffer.enable` 设置为 `True` 将对输出长度过长但仍未超过硬上下文限制的输出进行惩罚。具体来说，当输出的长度超过 `max_response_length - overlong_buffer.len` 且超出 `0` 到 `overlong_buffer.len` 个 token 时，惩罚值会从 `0` 线性增加到 `overlong_buffer.penalty_factor`。
 
 ```
-reward_model.overlong_buffer.enable=${enable_overlong_buffer} # 启用超长缓冲区惩罚,开启对超长输出的惩罚机制
-reward_model.overlong_buffer.len=${overlong_buffer_len}  # 缓冲区长度,定义缓冲区的toke,最大惩罚强度
-reward_model.overlong_buffer.penalty_factor=${overlong_penalty_factor}   #惩罚因子,最大惩罚强度
++reward.reward_kwargs.overlong_buffer.enable=${enable_overlong_buffer} # 启用超长缓冲区惩罚,开启对超长输出的惩罚机制
++reward.reward_kwargs.overlong_buffer.len=${overlong_buffer_len}  # 缓冲区长度,定义缓冲区的toke,最大惩罚强度
++reward.reward_kwargs.overlong_buffer.penalty_factor=${overlong_penalty_factor}   #惩罚因子,最大惩罚强度
 ```
 
 相关参数涉及的代码可以参考：[Recipe: Decoupled Clip and Dynamic Sampling Policy Optimization (DAPO)](https://github.com/verl-project/verl-recipe/blob/main/dapo/README.md)

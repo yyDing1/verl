@@ -4,7 +4,7 @@ PyTorch FSDP Backend
 Last updated: 12/01/2025.
 
 We support PyTorch FSDP Backend by implementing various workers for
-actor, critic, reference, rollout and reward models.
+actor, critic, reference, rollout models.
 
 **Pros**
 
@@ -102,8 +102,8 @@ actor model is also wrapped by the ``DataParallelPPOActor``.
   function in ``DataParallelPPOActor`` to compute the reference log
   prob.
 
-CriticWorker and RewardWorker
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CriticWorker
+^^^^^^^^^^^^
 
 1. Model initialization
 
@@ -123,14 +123,6 @@ additional initialization for the Optimizer.
 
    @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
    def update_critic(self, data: DataProto):
-
-4. Compute Reward
-
-.. code:: python
-
-   @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
-   def compute_rm_score(self, data: DataProto):
-
 
 HybridShard
 ------------

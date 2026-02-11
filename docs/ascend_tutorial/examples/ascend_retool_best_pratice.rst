@@ -208,8 +208,8 @@ https://github.com/bytedance/SandboxFusion
     data.truncation='error' \
     data.custom_cls.path=recipe/retool/retool.py \
     data.custom_cls.name=CustomRLHFDataset \
-    custom_reward_function.path=recipe/retool/retool.py \
-    custom_reward_function.name=compute_score \
+    reward.custom_reward_function.path=recipe/retool/retool.py \
+    reward.custom_reward_function.name=compute_score \
     actor_rollout_ref.model.path=$model_path \
     actor_rollout_ref.model.use_remove_padding=True \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \

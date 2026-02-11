@@ -469,52 +469,67 @@ Reward Model
 
 .. code:: yaml
 
-   reward_model:
-     enable: False
-     model:
-       input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
-       path: ~/models/Anomy-RM-v0.1
-       external_lib: ${actor_rollout_ref.model.external_lib}
-       trust_remote_code: False
-       fsdp_config:
-         min_num_params: 0
-         param_offload: False
-     micro_batch_size_per_gpu: 16
-     max_length: null
-     reward_manager: naive
+  reward:
+    num_workers: 8
+    custom_reward_function:
+      path: null
+      name: compute_score
+    reward_manager:
+      source: register
+      name: naive
+    reward_model:
+      enable: False
+      enable_resource_pool: false
+      n_gpus_per_node: 8
+      nnodes: 0
+      model_path: null
+      rollout:
+        name: vllm
+        dtype: bfloat16
+        gpu_memory_utilization: 0.5
+        enforce_eager: true
+        cudagraph_capture_sizes: null
+        free_cache_engine: true
+        data_parallel_size: 1
+        expert_parallel_size: 1
+        tensor_model_parallel_size: 2
+        max_num_batched_tokens: 8192
+        max_model_len: null
+        max_num_seqs: 1024
+        load_format: auto
+        engine_kwargs: {}
+        limit_images: null
+        enable_chunked_prefill: true
+        enable_prefix_caching: true
+        disable_log_stats: true
+        skip_tokenizer_init: false
+        prompt_length: 2048
+        response_length: 2048
+        micro_batch_size_per_gpu: 16
+        max_length: null
 
-- ``reward_model.enable``: Whether to enable reward model. If False, we
-  compute the reward only with the user-defined reward functions. In
-  GSM8K and Math examples, we disable reward model. For RLHF alignment
-  example using full_hh_rlhf, we utilize reward model to assess the
-  responses. If False, the following parameters are not effective.
-- ``reward_model.model``
+- ``reward.num_workers``: 
+- ``reward.custom_reward_function``:
 
-  - ``input_tokenizer``: Input tokenizer. If the reward model's chat
-    template is inconsistent with the policy, we need to first decode to
-    plaintext, then apply the rm's chat_template. Then score with RM. If
-    chat_templates are consistent, it can be set to null.
-  - ``path``: RM's HDFS path or local path. Note that RM only supports
-    AutoModelForSequenceClassification. Other model types need to define
-    their own RewardModelWorker and pass it from the code.
-  - ``trust_remote_code``: Whether to enable loading a remote code model,
-    default to False.
-- ``reward_model.reward_manager``:  Reward Manager. This defines the mechanism
-  of computing rule-based reward and handling different reward sources. Default
-  is ``naive``. If all verification functions are multiprocessing-safe, the reward
-  manager can be set to ``prime`` for parallel verification.
+  - ``path``: The path to the file containing your customized reward function. If not specified, pre-implemented reward functions will be used.
+  - ``name`` (Optional) : The name of the reward function within the specified file. Default is 'compute_score'.
 
-Customized Reward Function
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+- ``reward.reward_manager``: Reward Manager. This defines the mechanism
+  of computing reward and handling different reward sources. Default
+  is ``naive``. Other commonly used reward managers include ``dapo``, ``limit``, and so on.
 
-.. code:: yaml
-  
-   custom_reward_function:
-     path: null
-     name: compute_score
+- ``reward.reward_model``
 
-- ``custom_reward_function.path``: The path to the file containing your customized reward function. If not specified, pre-implemented reward functions will be used.
-- ``custom_reward_function.name`` (Optional) : The name of the reward function within the specified file. Default is 'compute_score'.
+  - ``enable``: Whether to enable reward model. If False, we
+    compute the reward only with the user-defined reward functions. In
+    GSM8K and Math examples, we disable reward model. For RLHF alignment
+    example using full_hh_rlhf, we utilize reward model to assess the
+    responses. If False, the following parameters are not effective.
+  - ``enable_resource_pool``: Whether to use an additional resource pool for the reward model.
+    When enabled, actor rollouts and reward model computation can be executed in a streaming and overlapped manner.
+    The default value is false.
+  - ``model_path``: Path to the reward model, (both discriminative and generative reward model are supported).
+  - ``rollout``: This is similar to the rollout setting.
 
 Algorithm
 ~~~~~~~~~
@@ -662,7 +677,6 @@ Customized Reward Function
 sft_trainer.yaml for SFT FSDP Backend
 --------------------------------------
 
-
 Optim
 ~~~~~~~
 
@@ -693,8 +707,6 @@ Optim
 
 Model
 ~~~~~~~~~~~~
-
-Most parameters for Model are similar to Reward Model.
 
 .. code:: yaml
 

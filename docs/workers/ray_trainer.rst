@@ -129,7 +129,7 @@ To extend to other RLHF algorithms, such as DPO, GRPO, please refer to
 
        # perform validation before training
        # currently, we only support validation using the reward_function.
-       if self.val_reward_fn is not None:
+       if self.config.trainer.get("val_before_train", True):
            val_metrics = self._validate()
            pprint(f'Initial validation metrics: {val_metrics}')
 
@@ -207,7 +207,7 @@ To extend to other RLHF algorithms, such as DPO, GRPO, please refer to
                    metrics.update(actor_output_metrics)
 
                # validate
-               if self.val_reward_fn is not None and (global_steps + 1) % self.config.trainer.test_freq == 0:
+               if (global_steps + 1) % self.config.trainer.test_freq == 0:
                    with Timer(name='testing', logger=None) as timer:
                        val_metrics: dict = self._validate()
                        val_metrics = {f'val/{key}': val for key, val in val_metrics.items()}
@@ -236,6 +236,5 @@ To extend to other RLHF algorithms, such as DPO, GRPO, please refer to
                global_steps += 1
 
        # perform validation after training
-       if self.val_reward_fn is not None:
-           val_metrics = self._validate()
-           pprint(f'Final validation metrics: {val_metrics}')
+       val_metrics = self._validate()
+       pprint(f'Final validation metrics: {val_metrics}')

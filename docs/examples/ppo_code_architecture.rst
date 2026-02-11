@@ -132,6 +132,10 @@ Step 3: Define resource pool id and resource pool spec
 Defining reward model/function
 ------------------------------
 
+.. warning::
+   This part has been deprecated, please refer to `this document <https://verl.readthedocs.io/en/latest/advance/reward_loop.html>`_ for more details about reward function usage.
+
+
 .. code:: python
 
    # we should adopt a multi-source reward function here
@@ -189,9 +193,7 @@ Define, init and run the PPO Trainer
                            tokenizer=tokenizer,
                            role_worker_mapping=role_worker_mapping,
                            resource_pool_manager=resource_pool_manager,
-                           ray_worker_group_cls=ray_worker_group_cls,
-                           reward_fn=reward_fn,
-                           val_reward_fn=val_reward_fn)
+                           ray_worker_group_cls=ray_worker_group_cls)
    trainer.init_workers()
    trainer.fit()
 
