@@ -31,6 +31,7 @@ verl is fast with:
    start/install
    start/quickstart
    start/multinode
+   start/reward_fn
    start/ray_debug_tutorial
    start/more_resources
    start/agentic_rl
