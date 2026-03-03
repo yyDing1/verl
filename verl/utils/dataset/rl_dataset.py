@@ -421,7 +421,7 @@ class RLHFDataset(Dataset):
                 "reason: _read_files_and_tokenize() not called or Parquet file loading failed"
             )
         if self.dataframe is None:
-            raise ValueError("RLHFDataset dataframe 为 None!")
+            raise ValueError("RLHFDataset dataframe is None!")
 
         total_samples = len(self.dataframe)
         print(f"total_samples: {total_samples}")
@@ -435,6 +435,55 @@ class RLHFDataset(Dataset):
         for i in range(num_splits):
             start_idx = i * split_size
             end_idx = (i + 1) * split_size if i < num_splits - 1 else total_samples
+
+            split_dataframe = self.dataframe.select(range(start_idx, end_idx))
+
+            split_dataset = RLHFDataset(
+                data_files=self.data_files,
+                tokenizer=self.tokenizer,
+                config=self.config,
+                processor=self.processor,
+                max_samples=self.max_samples,
+            )
+            split_dataset.dataframe = split_dataframe
+            split_dataset.serialize_dataset = self.serialize_dataset
+            split_dataset.original_data_files = self.original_data_files
+
+            splits.append(split_dataset)
+
+        return splits
+
+    def split_by_sizes(self, size_list: list[int]):
+        """
+        split the dataset into sub-datasets with specified sizes
+        Args:
+            size_list: list of specified sizes for each split
+        Returns:
+            List[RLHFDataset]: list of RLHFDataset splits
+        """
+        if not isinstance(size_list, list) or not all(isinstance(size, int) for size in size_list):
+            raise ValueError(f"size_list must be a list of integers, got {size_list}")
+
+        if not hasattr(self, "dataframe"):
+            raise AttributeError(
+                "dataframe not found in RLHFDataset\n"
+                "reason: _read_files_and_tokenize() not called or Parquet file loading failed"
+            )
+
+        total_samples = len(self.dataframe)
+        print(f"total_samples: {total_samples}")
+        if total_samples == 0:
+            raise ValueError("Cannot split an empty dataset")
+        if sum(size_list) != len(self.dataframe):
+            raise ValueError(f"sum of size_list must equal to dataset size {len(self.dataframe)}")
+
+        num_splits = len(size_list)
+        cum_split_list = [0] + [sum(size_list[: i + 1]) for i in range(num_splits)]
+
+        splits = []
+        for i in range(1, len(cum_split_list)):
+            start_idx = cum_split_list[i - 1]
+            end_idx = cum_split_list[i]
 
             split_dataframe = self.dataframe.select(range(start_idx, end_idx))
 

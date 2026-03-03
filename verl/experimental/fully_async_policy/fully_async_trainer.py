@@ -149,11 +149,11 @@ class FullyAsyncTrainer(SeparateRayPPOTrainer):
             val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor)
             rollout_gpus = config.rollout.nnodes * config.rollout.n_gpus_per_node
             print(f"[FullyAsyncTrainer] split before val_dataset total len: {len(val_dataset)}")
-            split_dataset = val_dataset.split(total_gpus)
-            rollout_val_dataset0 = split_dataset[rollout_gpus:]
-            from torch.utils.data import ConcatDataset
+            rollouter_split_size = rollout_gpus * len(val_dataset) // total_gpus
+            trainer_split_size = len(val_dataset) - rollouter_split_size
+            _, trainer_val_dataset = val_dataset.split_by_sizes(size_list=[rollouter_split_size, trainer_split_size])
+            val_dataset = trainer_val_dataset
 
-            val_dataset = ConcatDataset(rollout_val_dataset0)
             print(f"[FullyAsyncTrainer] split after val_dataset total len: {len(val_dataset)}")
             self.val_dataset = val_dataset
             # update val_dataloader
@@ -297,7 +297,8 @@ class FullyAsyncTrainer(SeparateRayPPOTrainer):
             # infrastructure overview: https://verl.readthedocs.io/en/latest/advance/reward_loop.html#architecture-design
             # agent_reward_loop: streaming reward computation with actor rollout
             # two conditions satisfied: (1) no reward model, or (2) reward model with extra resource pool
-            enable_agent_reward_loop = not self.use_rm or self.config.reward.reward_model.enable_resource_pool
+            # enable_agent_reward_loop = not self.use_rm or self.config.reward.reward_model.enable_resource_pool
+            enable_agent_reward_loop = False
 
             # if enable_agent_reward_loop, we directly pass reward_loop_workers to agent loop manager
             # to stream reward computation with actor rollout

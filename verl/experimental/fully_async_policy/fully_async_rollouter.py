@@ -120,12 +120,13 @@ class FullyAsyncRollouter(SeparateRayPPOTrainer):
             train_gpus = config.trainer.nnodes * config.trainer.n_gpus_per_node
             total_gpus = rollout_gpus + train_gpus
             print(f"[FullyAsyncRollouter] split before val_dataset total len: {len(val_dataset)}")
-            split_dataset = val_dataset.split(total_gpus)
-            rollout_val_dataset0 = split_dataset[:rollout_gpus]
-            from torch.utils.data import ConcatDataset
 
-            val_dataset = ConcatDataset(rollout_val_dataset0)
+            rollouter_split_size = rollout_gpus * len(val_dataset) // total_gpus
+            trainer_split_size = len(val_dataset) - rollouter_split_size
+            rollouter_val_dataset, _ = val_dataset.split_by_sizes(size_list=[rollouter_split_size, trainer_split_size])
+            val_dataset = rollouter_val_dataset
             print(f"[FullyAsyncRollouter] split after val_dataset total len: {len(val_dataset)}")
+
         print(f"[FullyAsyncRollouter] Rollouter _create_dataloader...\n{train_dataset}\n{val_dataset}")
 
         self._create_dataloader(train_dataset, val_dataset, collate_fn, train_sampler)
