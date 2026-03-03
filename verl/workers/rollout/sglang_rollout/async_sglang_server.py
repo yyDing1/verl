@@ -429,9 +429,11 @@ class SGLangReplica(RolloutReplica):
         model_config: HFModelConfig,
         gpus_per_node: int = 8,
         is_reward_model: bool = False,
+        server_actor_name: Optional[str] = None,
     ):
         super().__init__(replica_rank, config, model_config, gpus_per_node, is_reward_model)
         self.server_class = ray.remote(SGLangHttpServer)
+        self.server_actor_name = server_actor_name
 
     async def launch_servers(self):
         """Launch http server in each node."""
@@ -479,11 +481,12 @@ class SGLangReplica(RolloutReplica):
             )
 
             node_id = worker_node_ids[node_rank * self.gpus_per_replica_node]
+            # TODO: remove is_reward_model
             name = (
                 f"sglang_server_{self.replica_rank}_{node_rank}"
                 if not self.is_reward_model
                 else f"sglang_server_reward_{self.replica_rank}_{node_rank}"
-            )
+            ) if self.server_actor_name is None else self.server_actor_name
             server = self.server_class.options(
                 scheduling_strategy=ray.util.scheduling_strategies.NodeAffinitySchedulingStrategy(
                     node_id=node_id,

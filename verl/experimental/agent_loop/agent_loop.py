@@ -850,6 +850,7 @@ class AgentLoopManager:
         worker_group (RayWorkerGroup): ActorRolloutRef worker group for hybrid mode; None for standalone mode.
         rollout_resource_pool (RayResourcePool): Resource pool for hybrid mode, only used by TensorRT-LLM.
         reward_loop_worker_handles (List[ray.actor.ActorHandle]): Actor handles for streaming reward computation.
+        use_random_replica_name (bool): Whether to use random rollout replica name, resolve name conflict in multi-agent-loop-manager.
     """
 
     def __init__(
@@ -858,12 +859,14 @@ class AgentLoopManager:
         worker_group: RayWorkerGroup = None,
         rollout_resource_pool: RayResourcePool = None,
         reward_loop_worker_handles: list[ray.actor.ActorHandle] = None,
+        use_random_replica_name: bool = False,
     ):
         self.config = config
         self.rollout_config, self.model_config = _get_rollout_and_model_config(config)
         self.worker_group = worker_group
         self.rollout_resource_pool = rollout_resource_pool
         self.reward_loop_worker_handles = reward_loop_worker_handles
+        self.use_random_replica_name = use_random_replica_name
 
         assert worker_group is not None or self.rollout_config.nnodes > 0, "nnodes must be > 0 in standalone mode"
 
@@ -881,9 +884,12 @@ class AgentLoopManager:
         worker_group: RayWorkerGroup = None,
         rollout_resource_pool: RayResourcePool = None,
         reward_loop_worker_handles: list[ray.actor.ActorHandle] = None,
+        use_random_replica_name: bool = False,
     ):
         """Create agent loop manager."""
-        instance = cls(config, worker_group, rollout_resource_pool, reward_loop_worker_handles)
+        instance = cls(
+            config, worker_group, rollout_resource_pool, reward_loop_worker_handles, use_random_replica_name
+        )
         await instance._initialize_llm_servers()
         await instance._init_agent_loop_workers()
         return instance
@@ -907,6 +913,7 @@ class AgentLoopManager:
                 config=self.rollout_config,
                 model_config=self.model_config,
                 gpus_per_node=self.rollout_config.n_gpus_per_node,
+                server_actor_name=f"rollout_server_{uuid4().hex[:8]}" if self.use_random_replica_name else None,
             )
             for replica_rank in range(num_replicas)
         ]

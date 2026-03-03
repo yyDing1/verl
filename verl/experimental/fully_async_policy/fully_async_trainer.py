@@ -20,6 +20,8 @@ from typing import Any
 
 import ray
 from tqdm import tqdm
+from omegaconf import OmegaConf, open_dict
+from dataclasses import replace
 
 from verl import DataProto
 from verl.experimental.fully_async_policy.detach_utils import (
@@ -27,6 +29,7 @@ from verl.experimental.fully_async_policy.detach_utils import (
     ValidateMetrics,
     assemble_batch_from_rollout_samples,
 )
+from verl.checkpoint_engine import CheckpointEngineManager
 from verl.experimental.fully_async_policy.message_queue import MessageQueueClient
 from verl.experimental.separation.ray_trainer import SeparateRayPPOTrainer
 from verl.single_controller.ray import RayClassWithInitArgs, RayWorkerGroup
@@ -35,7 +38,7 @@ from verl.trainer.ppo.ray_trainer import ResourcePoolManager
 from verl.trainer.ppo.utils import Role, WorkerType, need_critic, need_reference_policy, need_reward_model
 from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path, should_save_ckpt_esi
 from verl.utils.debug import marked_timer
-
+from verl.utils.config import omega_conf_to_dataclass
 
 class TrainingStopException(Exception):
     """Exception raised to signal training should stop"""
@@ -310,15 +313,29 @@ class FullyAsyncTrainer(SeparateRayPPOTrainer):
             assert self.config.actor_rollout_ref.rollout.mode == "async"
             from verl.experimental.fully_async_policy.agent_loop import FullyAsyncAgentLoopManager
 
+            # deepcopy config to avoid modifying the original config
+            config = OmegaConf.create(OmegaConf.to_container(self.config, resolve=True))
+            with open_dict(config):
+                # this inference engine is colocate with trainer
+                config.actor_rollout_ref.rollout.free_cache_engine = True
+                # colocate trainer-rollouter should use naive checkpoint engine
+                config.actor_rollout_ref.rollout.checkpoint_engine.backend = "naive"
+
             self.async_rollout_mode = True
             self.async_rollout_manager = await FullyAsyncAgentLoopManager.create(
-                config=self.config,
+                config=config,
                 worker_group=self.actor_rollout_wg,
                 reward_loop_worker_handles=reward_loop_worker_handles,
+                use_random_replica_name=True,
             )
-
+            checkpoint_engine_config = omega_conf_to_dataclass(config.actor_rollout_ref.rollout.checkpoint_engine)
+            self.colocated_checkpoint_manager = CheckpointEngineManager(
+                config=checkpoint_engine_config,
+                trainer=self.actor_rollout_wg,
+                replicas=self.async_rollout_manager.rollout_replicas,
+            )
             print("[FullyAsyncTrainer] async_rollout_manager sleep")
-            await self.async_rollout_manager.sleep()
+            await self.colocated_checkpoint_manager.sleep_replicas()
         else:
             print("[FullyAsyncTrainer] Skip async rollout manager (use_trainer_do_validate=False)")
 
@@ -715,10 +732,11 @@ class FullyAsyncTrainer(SeparateRayPPOTrainer):
             from verl.utils.profiler import marked_timer
 
             timing_raw = {}
-            await self.async_rollout_manager.wake_up()
+            # await self.async_rollout_manager.wake_up()
+            await self.colocated_checkpoint_manager.update_weights()
             with marked_timer("trainer/validate_time", timing_raw):
                 self.train_val_metrics = self._validate(True)
-            await self.async_rollout_manager.sleep()
+            await self.colocated_checkpoint_manager.sleep_replicas()
             print(f"[FullyAsyncTrainer] validate timing_raw validate: {timing_raw['trainer/validate_time']}")
         else:
             self.train_val_metrics = None

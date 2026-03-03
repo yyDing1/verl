@@ -153,8 +153,9 @@ class FullyAsyncvLLMReplica(vLLMReplica):
         model_config: HFModelConfig,
         gpus_per_node: int = 8,
         is_reward_model: bool = False,
+        server_actor_name: Optional[str] = None,
     ):
-        super().__init__(replica_rank, config, model_config, gpus_per_node, is_reward_model)
+        super().__init__(replica_rank, config, model_config, gpus_per_node, is_reward_model, server_actor_name)
         self.server_class = ray.remote(vLLMHttpServerForPartial)
 
     async def cancel(self):

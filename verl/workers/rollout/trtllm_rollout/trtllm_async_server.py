@@ -326,11 +326,12 @@ class TRTLLMReplica(RolloutReplica):
         print(f"bundle_indices: {bundle_indices}")
 
         # TRTLLMReplica is a 1:1 map from replica to TRTLLMHttpServer.
+        # TODO: remove is_reward_model
         name = (
             f"trtllm_server_{self.replica_rank}"
             if not self.is_reward_model
             else f"trtllm_server_reward_{self.replica_rank}"
-        )
+        ) if self.server_actor_name is None else self.server_actor_name
 
         server = TRTLLMHttpServer.options(
             scheduling_strategy=ray.util.scheduling_strategies.NodeAffinitySchedulingStrategy(

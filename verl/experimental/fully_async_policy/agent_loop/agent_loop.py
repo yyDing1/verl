@@ -221,11 +221,13 @@ class FullyAsyncAgentLoopManager(AgentLoopManager):
         worker_group: RayWorkerGroup = None,
         rollout_resource_pool: RayResourcePool = None,
         reward_loop_worker_handles: list[ray.actor.ActorHandle] = None,
+        use_random_replica_name: bool = False,
     ):
         self.config = config
         self.rollout_config, self.model_config = _get_rollout_and_model_config(config)
         self.worker_group = worker_group
         self.reward_loop_worker_handles = reward_loop_worker_handles
+        self.use_random_replica_name = use_random_replica_name
         self.agent_loop_workers_class = FullyAsyncAgentLoopWorker
 
         # Select rollout replica class based on rollout name
