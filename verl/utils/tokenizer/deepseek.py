@@ -62,15 +62,36 @@ TASK_TOKENS = {
 # Roles that collapse into a single user turn when they appear back to back.
 _USER_RUN_ROLES = ("user", "tool")
 
-REASONING_EFFORT_MAX = (
-    "Reasoning Effort: Absolute maximum with no shortcuts permitted.\n"
-    "You MUST be very thorough in your thinking and comprehensively decompose the problem to "
-    "resolve the root cause, rigorously stress-testing your logic against all potential paths, "
-    "edge cases, and adversarial scenarios.\n"
-    "Explicitly write out your entire deliberation process, documenting every intermediate step, "
-    "considered alternative, and rejected hypothesis to ensure absolutely no assumption is left "
-    "unchecked.\n\n"
-)
+REASONING_EFFORT_PROMPTS: dict[str, str] = {
+    "low": "",
+    "high": (
+        "Reasoning Effort: Absolute maximum with no shortcuts permitted.\n"
+        "You MUST be very thorough in your thinking and comprehensively decompose the problem to "
+        "resolve the root cause, rigorously stress-testing your logic against all potential paths, "
+        "edge cases, and adversarial scenarios.\n"
+        "Explicitly write out your entire deliberation process, documenting every intermediate step, "
+        "considered alternative, and rejected hypothesis to ensure absolutely no assumption is left "
+        "unchecked.\n\n"
+    ),
+    "max": (
+        "Reasoning Effort: Beyond maximum — exhaustive, relentless, and uncompromising.\n"
+        "You MUST reason with the utmost depth and rigor, leaving absolutely nothing to chance: "
+        "exhaustively decompose the problem into its most fundamental components, trace every causal "
+        "chain to its root, and resolve the underlying cause rather than any surface symptom.\n"
+        "Do not stop reasoning until you have independently verified the solution from multiple angles "
+        "and are certain that no assumption remains unchecked and no error remains undiscovered.\n\n"
+    ),
+}
+DEFAULT_REASONING_EFFORT = "low"
+
+# Compatibility aliases preserve the effective prompt used by older DeepSeek-V4
+# serving contracts while canonicalizing onto the current low/high/max levels.
+_REASONING_EFFORT_ALIASES = {
+    "minimal": "low",
+    "medium": "low",
+    "xhigh": "high",
+    "ultra": "max",
+}
 
 TOOLS_TEMPLATE = """## Tools
 
@@ -121,6 +142,25 @@ def _text_of(content: Any) -> str:
     if isinstance(content, list):
         return "".join(part.get("text", "") for part in content if part.get("type") == "text")
     return str(content)
+
+
+def _resolve_reasoning_effort(reasoning_effort: Optional[str]) -> Optional[str]:
+    """Resolve canonical and compatibility effort names.
+
+    ``None`` keeps checkpoint-level behavior (low). ``none`` is the serving
+    compatibility spelling for disabling thinking.
+    """
+    if reasoning_effort is None:
+        return DEFAULT_REASONING_EFFORT
+    if reasoning_effort == "none":
+        return None
+    resolved = _REASONING_EFFORT_ALIASES.get(reasoning_effort, reasoning_effort)
+    if resolved not in REASONING_EFFORT_PROMPTS:
+        raise ValueError(
+            f"Invalid reasoning effort: {reasoning_effort!r}; expected one of "
+            f"{[*REASONING_EFFORT_PROMPTS, 'none', *_REASONING_EFFORT_ALIASES]}"
+        )
+    return resolved
 
 
 def render_tools(tools: list[dict[str, Any]]) -> str:
@@ -177,13 +217,14 @@ def encode_messages(
             token so the model answers directly.
         drop_thinking: Drop reasoning from assistant turns before the last user turn. Automatically
             disabled when tools are present, because tool calling needs the full reasoning trace.
-        reasoning_effort: ``"max"``/``"xhigh"`` prepend the maximum effort preamble, ``"none"``
-            disables thinking.
+        reasoning_effort: Canonical ``"low"``/``"high"``/``"max"`` effort.
+            Compatibility aliases are normalized, and ``"none"`` disables thinking.
 
     Returns:
         The encoded prompt.
     """
-    think = enable_thinking and reasoning_effort != "none"
+    resolved_reasoning_effort = _resolve_reasoning_effort(reasoning_effort)
+    think = enable_thinking and resolved_reasoning_effort is not None
     has_tools = bool(tools) or any(message.get("tools") for message in messages)
     drop = drop_thinking and not has_tools
     last_user = max(
@@ -194,8 +235,8 @@ def encode_messages(
     out: list[str] = []
     if add_bos_token:
         out.append(BOS_TOKEN)
-    if think and reasoning_effort in ("max", "xhigh"):
-        out.append(REASONING_EFFORT_MAX)
+    if think and resolved_reasoning_effort is not None:
+        out.append(REASONING_EFFORT_PROMPTS[resolved_reasoning_effort])
     if tools:
         out.append("\n\n" + render_tools(tools))
 
