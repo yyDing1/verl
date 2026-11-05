@@ -203,6 +203,7 @@ def encode_messages(
     enable_thinking: bool = False,
     drop_thinking: bool = True,
     reasoning_effort: Optional[str] = None,
+    previous_role: Optional[str] = None,
 ) -> str:
     """Encode a conversation into a DeepSeek-V4 prompt.
 
@@ -219,6 +220,9 @@ def encode_messages(
             disabled when tools are present, because tool calling needs the full reasoning trace.
         reasoning_effort: Canonical ``"low"``/``"high"``/``"max"`` effort.
             Compatibility aliases are normalized, and ``"none"`` disables thinking.
+        previous_role: Role immediately preceding ``messages`` when rendering
+            an incremental continuation. Consecutive user/tool messages share
+            one DeepSeek-V4 user turn across request boundaries.
 
     Returns:
         The encoded prompt.
@@ -235,9 +239,20 @@ def encode_messages(
     out: list[str] = []
     if add_bos_token:
         out.append(BOS_TOKEN)
-    if think and resolved_reasoning_effort is not None:
+    # Reasoning effort is a conversation-level prefix. Incremental Continuous
+    # Token appends set ``add_bos_token=False`` and must not inject it between
+    # assistant and tool turns.
+    if add_bos_token and think and resolved_reasoning_effort is not None:
         out.append(REASONING_EFFORT_PROMPTS[resolved_reasoning_effort])
-    if tools:
+
+    # The reference DeepSeek-V4 encoder appends tool schemas to the leading
+    # system/developer message. If there is no such message, keep the schemas
+    # before the first user turn.
+    top_level_tools_target = next(
+        (index for index, message in enumerate(messages) if message["role"] in ("system", "developer")),
+        None,
+    )
+    if tools and top_level_tools_target is None:
         out.append("\n\n" + render_tools(tools))
 
     for index, message in enumerate(messages):
@@ -248,6 +263,8 @@ def encode_messages(
             if role == "developer":
                 out.append(USER_TOKEN)
             out.append(_text_of(message.get("content")))
+            if tools and index == top_level_tools_target:
+                out.append("\n\n" + render_tools(tools))
             if message.get("tools"):
                 out.append("\n\n" + render_tools(message["tools"]))
             if message.get("response_format"):
@@ -258,7 +275,8 @@ def encode_messages(
 
         elif role in _USER_RUN_ROLES:
             # A run of consecutive user/tool messages is encoded as one user turn.
-            if index == 0 or messages[index - 1]["role"] not in _USER_RUN_ROLES:
+            preceding_role = messages[index - 1]["role"] if index else previous_role
+            if preceding_role not in _USER_RUN_ROLES:
                 out.append(USER_TOKEN)
             else:
                 out.append("\n\n")
@@ -350,6 +368,7 @@ class DeepSeekV4ContinuousTokenBuilder(ContinuousTokenBuilder):
             tools=None,
             add_bos_token=False,
             drop_thinking=False,
+            previous_role=previous_messages[-1].get("role") if previous_messages else None,
         )
 
     def _encode(
@@ -359,6 +378,7 @@ class DeepSeekV4ContinuousTokenBuilder(ContinuousTokenBuilder):
         tools: list[dict[str, Any]] | None,
         add_bos_token: bool,
         drop_thinking: bool | None = None,
+        previous_role: str | None = None,
     ) -> list[int]:
         text = encode_messages(
             messages,
@@ -368,6 +388,7 @@ class DeepSeekV4ContinuousTokenBuilder(ContinuousTokenBuilder):
             enable_thinking=self._enable_thinking,
             drop_thinking=self._drop_thinking if drop_thinking is None else drop_thinking,
             reasoning_effort=self._reasoning_effort,
+            previous_role=previous_role,
         )
         return normalize_token_ids(self.tokenizer.encode(text, add_special_tokens=False))
 
